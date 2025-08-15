@@ -20,7 +20,7 @@ app = FastAPI()
 # Allow CORS for frontend (adjust origins if deploying)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Change to your frontend domain in production
+    allow_origins=["https://career-sight.vercel.app/"],  # Change to your frontend domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
