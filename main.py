@@ -17,16 +17,14 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 app = FastAPI()
 
-# Allow CORS for frontend (adjust origins if deploying)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://career-sight.vercel.app"],  # Change to your frontend domain in production
+    allow_origins=["https://career-sight.vercel.app"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Prompts ---
 PROMPTS = {
     "resume_review": """
 You are an experienced Technical Human Resource Manager, your task is to review the provided resume against the job description.
@@ -63,7 +61,6 @@ output with scores (0-100) for each category and an overall score.
 """
 }
 
-# --- Utilities ---
 def convert_pdf_to_base64_image(uploaded_file: UploadFile):
     pdf_bytes = uploaded_file.file.read()
     images = pdf2image.convert_from_bytes(pdf_bytes)
@@ -98,7 +95,7 @@ def generate_gemini_response(job_description, image_base64, prompt_type):
             raise ValueError("Gemini did not return any text response")
 
     def extract_json_from_text(text):
-        # Try to find JSON block in the text
+        
         json_match = re.search(r"\{.*\}", text, re.DOTALL)
         if json_match:
             try:
@@ -107,7 +104,7 @@ def generate_gemini_response(job_description, image_base64, prompt_type):
                 raise ValueError("Gemini returned invalid JSON structure")
         raise ValueError("No JSON object found in Gemini's response")
 
-    # Special handling for resume scoring dashboard
+   
     if prompt_type == "resume_scoring_dashboard":
         prompt += (
             "\nReturn the result ONLY in JSON format like this: "
@@ -117,7 +114,7 @@ def generate_gemini_response(job_description, image_base64, prompt_type):
         text_output = extract_text_from_response(response)
         return extract_json_from_text(text_output)
 
-    # Default for all other prompts (plain text)
+   
     response = model.generate_content([prompt, job_description, pdf_content[0]])
     return extract_text_from_response(response)
 
@@ -131,7 +128,6 @@ def generate_linkedin_tips(linkedin_url: str):
 
     return response.text
 
-# --- Unified Route ---
 @app.post("/analyze_resume")
 async def analyze_resume(
     job_description: str = Form(None),
@@ -140,14 +136,12 @@ async def analyze_resume(
     linkedin_url: str = Form(None)
 ):
     try:
-        # Handle LinkedIn tips separately
         if prompt_type == "linkedin_tips":
             if not linkedin_url or "linkedin.com/in/" not in linkedin_url:
                 return JSONResponse(status_code=400, content={"error": "Invalid LinkedIn profile URL"})
             ai_response = generate_linkedin_tips(linkedin_url)
             return JSONResponse(content={"result": ai_response})
 
-        # All resume-related functionalities
         if not resume:
             return JSONResponse(status_code=400, content={"error": "Resume file is required for this analysis type"})
 
@@ -158,8 +152,6 @@ async def analyze_resume(
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-# --- New Independent Routes ---
 
 @app.post("/resume_rewrite")
 async def resume_rewrite(job_description: str = Form(...), resume: UploadFile = File(...)):
@@ -187,7 +179,6 @@ async def resume_scoring_dashboard(job_description: str = Form(...), resume: Upl
         print("📄 Received Job Description:", job_description[:100])  # first 100 chars
         print("📎 Received File:", resume.filename)
 
-        # Step 1 - Convert PDF
         try:
             image_base64 = convert_pdf_to_base64_image(resume)
             print("✅ PDF converted to base64 image")
@@ -196,7 +187,6 @@ async def resume_scoring_dashboard(job_description: str = Form(...), resume: Upl
             print(traceback.format_exc())
             return JSONResponse(status_code=500, content={"error": f"PDF conversion failed: {str(e)}"})
 
-        # Step 2 - Call Gemini
         try:
             ai_response = generate_gemini_response(job_description, image_base64, "resume_scoring_dashboard")
             print("✅ Gemini API responded")
